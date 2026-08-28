@@ -1,23 +1,35 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import * as maplibregl from "maplibre-gl";
+import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    let map: any;
 
-    const map = new maplibregl.Map({
-      container: mapContainer.current,
-      style: "https://tiles.openfreemap.org/styles/liberty",
-      center: [-122.3321, 47.6062],
-      zoom: 10,
-    });
+    async function createMap() {
+      const maplibregl = await import("maplibre-gl");
 
-    return () => map.remove();
+      if (!mapContainer.current) return;
+
+      map = new maplibregl.Map({
+        container: mapContainer.current,
+        style: "https://tiles.openfreemap.org/styles/liberty",
+        center: [-122.3321, 47.6062],
+        zoom: 10,
+      });
+    }
+
+    createMap();
+
+    return () => {
+      if (map) {
+        map.remove();
+      }
+    };
   }, []);
 
   return (
