@@ -204,6 +204,8 @@ export default function Home() {
   const [addressError, setAddressError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 
   const neighborhoodColors = useMemo(
     () => computeNeighborhoodColors(neighborhoods, blockAdjacency),
@@ -526,6 +528,23 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+  const mq = window.matchMedia("(max-width: 700px)");
+  setIsNarrowScreen(mq.matches);
+  function handleChange(e: MediaQueryListEvent) {
+    setIsNarrowScreen(e.matches);
+  }
+  mq.addEventListener("change", handleChange);
+  return () => mq.removeEventListener("change", handleChange);
+}, []);
+
+function toggleSidebar() {
+  setSidebarOpen((prev) => !prev);
+  setTimeout(() => {
+    mapRef.current?.resize();
+  }, 300);
+}
+
   // --- Shared block-selection logic (used by both map clicks and address search) ---
   function selectBlock(geoid: string) {
     if (!mapRef.current) return;
@@ -593,6 +612,14 @@ export default function Home() {
       }
 
       selectBlock(match.properties.GEOID_20);
+
+if (isNarrowScreen && sidebarOpen) {
+  setSidebarOpen(false);
+  setTimeout(() => {
+    mapRef.current?.resize();
+  }, 300);
+}
+      
     } catch (err) {
       console.error("Address search failed:", err);
       setAddressError("Something went wrong searching for that address.");
@@ -642,16 +669,39 @@ export default function Home() {
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
       <aside
-        style={{
-          width: 320,
-          flexShrink: 0,
-          background: "#1a1a1a",
-          color: "#eee",
-          padding: "20px",
-          overflowY: "auto",
-          boxSizing: "border-box",
-        }}
-      >
+  style={{
+    width: sidebarOpen ? 320 : 0,
+    flexShrink: 0,
+    background: "#1a1a1a",
+    color: "#eee",
+    padding: sidebarOpen ? "20px" : "0px",
+    overflowY: "auto",
+    overflowX: "hidden",
+    boxSizing: "border-box",
+    transition: "width 0.3s ease, padding 0.3s ease",
+  }}
+>
+    <button
+  onClick={toggleSidebar}
+  aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+  style={{
+  position: "fixed",
+  top: "50%",
+  left: sidebarOpen ? 320 : 8,
+  transform: "translateY(-50%)",
+  zIndex: 10,
+  width: 28,
+  height: 48,
+  background: "#1a1a1a",
+  color: "#eee",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 14,
+  transition: "left 0.3s ease",
+}}
+>
+  {sidebarOpen ? "‹" : "›"}
+</button>
         <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Crete Round&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Radio Canada&display=swap" rel="stylesheet" />
