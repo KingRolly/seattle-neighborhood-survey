@@ -835,21 +835,22 @@ if (isNarrowScreen && sidebarOpen) {
 
         {selectedGeoid && formVisible && (
           <form
-            onSubmit={handleSave}
-            style={{
-              position: "absolute",
-              top: 10,
-              left: 10,
-              background: "white",
-              padding: "12px 16px",
-              borderRadius: 0,
-              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              minWidth: 220,
-            }}
-          >
+  onSubmit={handleSave}
+  style={{
+    position: "absolute",
+    top: isNarrowScreen ? "max(20px, env(safe-area-inset-top))" : 10,
+    left: 10,
+    background: "white",
+    padding: "12px 16px",
+    borderRadius: 0,
+    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+    minWidth: 220,
+    maxWidth: "calc(100vw - 40px)",
+  }}
+>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <label style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#333", fontWeight: "bold" }}>
                 What do you call this neighborhood?
