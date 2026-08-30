@@ -1,0 +1,21 @@
+I'm continuing my Seattle Neighborhoods website project. I have decent programming experience but little web development experience, so please give me step-by-step instructions and don't assume I know Next.js.
+
+Project: A website where users can click a Seattle city block on a map and enter the neighborhood they consider themselves to live in. Eventually, blocks will be colored according to the neighborhood names users enter, with neighborhood-level data/statistics. We are restricting the map/data to Seattle city limits.
+
+Current working setup:
+
+Next.js 16.3.3
+Node.js 24.20.0
+MapLibre GL 5.16.0
+OpenFreeMap Liberty basemap
+Seattle block GeoJSON
+GeoJSON is at public/seattle-blocks.geojson
+The Seattle blocks are currently visible on the map
+MapLibre must use the namespace/dynamic import approach we've been using because newer versions caused MIME/module problems.
+Where I left off: The Seattle map and block polygons are working. The next goal is to make individual blocks clickable/hoverable, then let the user assign a neighborhood name to a clicked block.
+
+Important: Please don't have me upgrade MapLibre or change versions unless necessary. We finally have the map working with maplibre-gl@5.16.0.
+
+My project is located at: C:\Users\kingr\seattle-neighborhoods
+
+Please help me continue from here, one step at a time.
