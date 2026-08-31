@@ -206,11 +206,41 @@ export default function Home() {
   const [bannerIndex, setBannerIndex] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 
   const neighborhoodColors = useMemo(
     () => computeNeighborhoodColors(neighborhoods, blockAdjacency),
     [neighborhoods, blockAdjacency]
   );
+
+  const qualifyingNames = useMemo(() => {
+  const nameCounts: Record<string, number> = {};
+  let total = 0;
+
+  for (const counts of Object.values(neighborhoods)) {
+    for (const [name, count] of Object.entries(counts)) {
+      nameCounts[name] = (nameCounts[name] ?? 0) + count;
+      total += count;
+    }
+  }
+
+  if (total === 0) return [];
+
+  return Object.entries(nameCounts)
+    .filter(([, count]) => count >= 5 && count / total >= 0.01)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name);
+}, [neighborhoods]);
+
+const matchingSuggestions = useMemo(() => {
+  const typed = nameInput.trim().toLowerCase();
+  if (typed.length === 0) return [];
+  const limit = isNarrowScreen ? 3 : 10;
+  return qualifyingNames
+    .filter((name) => name.toLowerCase().includes(typed))
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, limit);
+}, [qualifyingNames, nameInput, isNarrowScreen]);
 
   // --- Session ID (one submission per browser session) ---
   useEffect(() => {
@@ -873,14 +903,61 @@ if (isNarrowScreen && sidebarOpen) {
               </button>
             </div>
 
-            <input
-              type="text"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="e.g. Fremont"
-              style={{ fontFamily: "Radio Canada, sans-serif", padding: "6px 8px", fontSize: 14, border: "1px solid #ccc", borderRadius: 0 }}
-              autoFocus
-            />
+            <div style={{ position: "relative" }}>
+  <input
+    type="text"
+    value={nameInput}
+    onChange={(e) => {
+      setNameInput(e.target.value);
+      setSuggestionsOpen(true);
+    }}
+    onFocus={() => {
+      if (nameInput.trim().length > 0) setSuggestionsOpen(true);
+    }}
+    onBlur={() => {
+      setTimeout(() => setSuggestionsOpen(false), 150);
+    }}
+    placeholder="e.g. Fremont"
+    style={{ fontFamily: "Radio Canada, sans-serif", padding: "6px 8px", fontSize: 16, border: "1px solid #ccc", borderRadius: 0, width: "100%", boxSizing: "border-box" }}
+    autoFocus
+  />
+  {suggestionsOpen && matchingSuggestions.length > 0 && (
+    <div
+      style={{
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        right: 0,
+        background: "white",
+        border: "1px solid #ccc",
+        borderTop: "none",
+        maxHeight: 160,
+        overflowY: "auto",
+        zIndex: 20,
+      }}
+    >
+      {matchingSuggestions.map((name) => (
+        <div
+          key={name}
+          onMouseDown={() => {
+            setNameInput(capitalizeWords(name));
+            setSuggestionsOpen(false);
+          }}
+          style={{
+            padding: "6px 8px",
+            fontSize: 14,
+            fontFamily: "Radio Canada, sans-serif",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+        >
+          {capitalizeWords(name)}
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
             {ownSubmission && ownSubmission.geoid !== selectedGeoid && (
               <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#f87171" }}>
