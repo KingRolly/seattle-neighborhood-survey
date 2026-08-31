@@ -293,7 +293,7 @@ const matchingSuggestions = useMemo(() => {
             "fill-opacity": [
               "case",
               ["!=", ["feature-state", "color"], null],
-              0.8,
+              0.6,
               0,
             ],
           },
@@ -770,12 +770,11 @@ if (isNarrowScreen && sidebarOpen) {
           Seattle Neighborhoods, According to Seattleites
         </h1>
 
-        <p style={{ fontFamily: "Crete Round, serif", fontSize: 14, color: "#777", lineHeight: 1.5, marginBottom: 10 }}>
+        <p style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#777", lineHeight: 1.5, marginBottom: 10 }}>
           Inspired by the <i>New York Times'</i> ‎ "An Extremely Detailed Map of New York City Neighborhoods."
         </p>
-        <p style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#aaa", lineHeight: 1.5, marginBottom: 5 }}>
-          Click on any block or search for it by address to see previous responses or enter your own.
-          Colors are a blend of everyone's answers.
+        <p style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#ccc", lineHeight: 1.5, marginBottom: 10 }}>
+          Click on any block to see previous responses or submit your own neighborhood!
         </p>
         <p style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#777", lineHeight: 1.5, marginBottom: 10 }}>
           The block you enter will not be associated with your name or any other personal info, and is only used in aggregate for this project.
