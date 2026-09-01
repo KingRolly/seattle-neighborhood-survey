@@ -243,15 +243,15 @@ const matchingSuggestions = useMemo(() => {
     .slice(0, limit);
 }, [qualifyingNames, nameInput, isNarrowScreen]);
 
-  // --- Session ID (one submission per browser session) ---
+  // --- Session ID (one submission per device) ---
   useEffect(() => {
-    let id = sessionStorage.getItem("session-id");
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem("session-id", id);
-    }
-    setSessionId(id);
-  }, []);
+  let id = localStorage.getItem("session-id");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("session-id", id);
+  }
+  setSessionId(id);
+}, []);
 
   // --- Map setup ---
   useEffect(() => {
@@ -801,7 +801,7 @@ if (isNarrowScreen && sidebarOpen) {
           Click on any block to see previous responses or submit your own neighborhood!
         </p>
         <p style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#777", lineHeight: 1.5, marginBottom: 10 }}>
-          The block you enter will not be associated with your name or any other personal info, and is only used in aggregate for this project.
+          The block you enter will not be associated with your personal info, and is only used in aggregate for this project.
         </p>
 
         <form onSubmit={handleAddressSearch} style={{ display: "flex", flexDirection: "column" }}>
@@ -879,7 +879,7 @@ if (isNarrowScreen && sidebarOpen) {
       <div style={{ fontFamily: "Crete Round, serif", fontSize: 14, color: "#333", lineHeight: 1.6 }}>
         <p><strong>Why are some blocks not clickable or oddly-shaped?</strong><br />Blocks with no population are not available to be clicked. Weird shapes are a result of how blocks are defined in the 2020 US Census data.</p>
         <p><strong>Can I change my answer?</strong><br />Yes, but only while you keep the tab open. After closing, your answer is locked in.</p>
-        <p><strong>Is my submission anonymous?</strong><br />No information about you is kept by this website. All I store is a list of blocks and the neighborhoods reported for them.</p>
+        <p><strong>Is my submission anonymous?</strong><br/>Yes. The only information your submission is associated with is your entire block and a randomly generated ID to prevent multiple responses from one browser.</p>
       </div>
     </div>
   </div>
