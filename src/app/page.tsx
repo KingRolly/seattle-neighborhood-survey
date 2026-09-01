@@ -207,6 +207,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+const [faqOpen, setFaqOpen] = useState(false);
 
   const neighborhoodColors = useMemo(
     () => computeNeighborhoodColors(neighborhoods, blockAdjacency),
@@ -377,23 +378,24 @@ const matchingSuggestions = useMemo(() => {
           map.setFeatureState({ source: "seattle-blocks", id: hoveredBlockId }, { hover: true });
 
           const counts = neighborhoodsRef.current[hoveredBlockId!];
-          let html = `<div class="block-popup-title" style="font-family: Crete Round, serif;">Where is this?</div>`;
-          if (counts && Object.keys(counts).length > 0) {
-            const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
-            html += Object.entries(counts)
-              .sort((a, b) => b[1] - a[1])
-              .map(([name, count]) => {
-                const pct = Math.round((count / total) * 100);
-                const color = neighborhoodColorsRef.current[name] ?? "#576373";
-                return `<div class="block-popup-row" style="font-family: Crete Round, sans-serif;">
+let html = `<div class="block-popup-title" style="font-family: Crete Round, serif;">Where is this?</div>`;
+if (counts && Object.keys(counts).length > 0) {
+  const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
+  html += Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => {
+      const pct = Math.round((count / total) * 100);
+      const color = neighborhoodColorsRef.current[name] ?? "#576373";
+      return `<div class="block-popup-row" style="font-family: Crete Round, sans-serif;">
   <span class="block-popup-swatch" style="background:${color}"></span>
-  <span style="color:${color}">${escapeHtml(capitalizeWords(name))}: ${pct}%</span>
+  <span style="color:${color}">${escapeHtml(capitalizeWords(name))}: ${count} (${pct}%)</span>
 </div>`;
-              })
-              .join("");
-          } else {
-            html += `<div class="block-popup-row" style="font-family: Crete Round, serif;">No submissions yet</div>`;
-          }
+    })
+    .join("");
+  html += `<div class="block-popup-row" style="font-family: Crete Round, serif; color: #888; margin-top: 4px;">${total} response${total === 1 ? "" : "s"}</div>`;
+} else {
+  html += `<div class="block-popup-row" style="font-family: Crete Round, serif;">No submissions yet</div>`;
+}
 
           popupRef.current.setLngLat(e.lngLat).setHTML(html).addTo(map);
 
@@ -709,8 +711,30 @@ if (isNarrowScreen && sidebarOpen) {
     overflowX: "hidden",
     boxSizing: "border-box",
     transition: "width 0.3s ease, padding 0.3s ease",
+    position: "relative",
   }}
 >
+    <button
+  onClick={() => setFaqOpen(true)}
+  aria-label="Frequently asked questions"
+  style={{
+    position: "absolute",
+    top: 10,
+    right: 10,
+    zIndex: 30,
+    width: 28,
+    height: 28,
+    background: "white",
+    color: "#333",
+    border: "1px solid #ccc",
+    borderRadius: 0,
+    cursor: "pointer",
+    fontSize: 14,
+    fontFamily: "Crete Round, serif",
+  }}
+>
+  ?
+</button>
     <button
   onClick={toggleSidebar}
   aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
@@ -814,6 +838,52 @@ if (isNarrowScreen && sidebarOpen) {
           </div>
         )}
       </aside>
+{faqOpen && (
+  <div
+    onClick={() => setFaqOpen(false)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.5)",
+      zIndex: 40,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: "white",
+        padding: 24,
+        maxWidth: 480,
+        width: "90%",
+        maxHeight: "80vh",
+        overflowY: "auto",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ fontFamily: "Righteous, sans-serif", fontSize: 20, margin: 0, color: "#1a1a1a" }}>
+          FAQ
+        </h2>
+        <button
+          onClick={() => setFaqOpen(false)}
+          aria-label="Close"
+          style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666" }}
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={{ fontFamily: "Crete Round, serif", fontSize: 14, color: "#333", lineHeight: 1.6 }}>
+        <p><strong>Why are some blocks not clickable or oddly-shaped?</strong><br />Blocks with no population are not available to be clicked. Weird shapes are a result of how blocks are defined in the 2020 US Census data.</p>
+        <p><strong>Can I change my answer?</strong><br />Yes, but only while you keep the tab open. After closing, your answer is locked in.</p>
+        <p><strong>Is my submission anonymous?</strong><br />No information about you is kept by this website. All I store is a list of blocks and the neighborhoods reported for them.</p>
+      </div>
+    </div>
+  </div>
+)}
 
       <div style={{ position: "relative", flex: 1 }}>
         <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
@@ -967,22 +1037,6 @@ if (isNarrowScreen && sidebarOpen) {
             <button type="submit" style={{ fontFamily: "Crete Round, serif", padding: "6px 8px", fontSize: 14, cursor: "pointer", borderRadius: 0 }}>
               Save
             </button>
-
-            {neighborhoods[selectedGeoid] && (
-              <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#666", display: "flex", flexDirection: "column", gap: 2 }}>
-                {(() => {
-                  const counts = neighborhoods[selectedGeoid];
-                  const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
-                  return Object.entries(counts)
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name, count]) => (
-                      <div key={name} style={{ color: neighborhoodColors[name] ?? "#666" }}>
-                        {capitalizeWords(name)}: {count} ({Math.round((count / total) * 100)}%)
-                      </div>
-                    ));
-                })()}
-              </div>
-            )}
           </form>
         )}
       </div>
