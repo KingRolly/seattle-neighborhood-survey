@@ -667,9 +667,9 @@ if (isNarrowScreen && sidebarOpen) {
   e.preventDefault();
   if (!selectedGeoid || nameInput.trim() === "" || !sessionId) return;
 
-  const hasSeparator = nameInput.includes("/") || nameInput.includes(",") || nameInput.includes(" or ");
+  const hasSeparator = nameInput.includes("/") || nameInput.includes(",");
   if (hasSeparator && nameError === null) {
-    setNameError('Only choose one name you most identify with. Save again if you\'re sure about your submission.');
+    setNameError('Choose one name that you most identify with. If you\'re sure about this answer, save again.');
     return;
   }
 
@@ -687,9 +687,18 @@ if (isNarrowScreen && sidebarOpen) {
     return;
   }
 
+  if (selectedBlockIdRef.current !== null && mapRef.current) {
+    mapRef.current.setFeatureState(
+      { source: "seattle-blocks", id: selectedBlockIdRef.current },
+      { selected: false }
+    );
+  }
+  selectedBlockIdRef.current = null;
+
   setNameInput("");
   setFormVisible(false);
   setNameError(null);
+  setSelectedGeoid(null);
   await loadNeighborhoods();
 }
 
@@ -819,24 +828,20 @@ if (isNarrowScreen && sidebarOpen) {
             Find a block by address:
           </label>
           <input
-            type="text"
-            value={addressInput}
-            onChange={(e) => {
-    setNameInput(e.target.value);
-    setNameError(null);
-    setSuggestionsOpen(true);
+  type="text"
+  value={addressInput}
+  onChange={(e) => setAddressInput(e.target.value)}
+  placeholder="e.g. 400 Broad St"
+  style={{
+    fontFamily: "Radio Canada, sans-serif",
+    padding: "6px 8px",
+    fontSize: 14,
+    border: "1px solid #444",
+    borderRadius: 0,
+    background: "#111",
+    color: "#eee",
   }}
-            placeholder="e.g. 400 Broad St"
-            style={{
-              fontFamily: "Radio Canada, sans-serif",
-              padding: "6px 8px",
-              fontSize: 14,
-              border: "1px solid #444",
-              borderRadius: 0,
-              background: "#111",
-              color: "#eee",
-            }}
-          />
+/>
           <button
             type="submit"
             disabled={isSearching}
@@ -988,22 +993,18 @@ if (isNarrowScreen && sidebarOpen) {
 
             <div style={{ position: "relative" }}>
   <input
-    type="text"
-    value={nameInput}
-    onChange={(e) => {
-      setNameInput(e.target.value);
-      setSuggestionsOpen(true);
-    }}
-    onFocus={() => {
-      if (nameInput.trim().length > 0) setSuggestionsOpen(true);
-    }}
-    onBlur={() => {
-      setTimeout(() => setSuggestionsOpen(false), 150);
-    }}
-    placeholder="e.g. Fremont"
-    style={{ fontFamily: "Radio Canada, sans-serif", padding: "6px 8px", fontSize: 16, border: "1px solid #ccc", borderRadius: 0, width: "100%", boxSizing: "border-box" }}
-    autoFocus
-  />
+  type="text"
+  value={nameInput}
+  onChange={(e) => {
+    setNameInput(e.target.value);
+    setNameError(null);
+    setSuggestionsOpen(true);
+  }}
+  placeholder="e.g. Fremont"
+  list="neighborhood-suggestions"
+  style={{ fontFamily: "Radio Canada, sans-serif", padding: "6px 8px", fontSize: 16, border: "1px solid #ccc", borderRadius: 0 }}
+  autoFocus
+/>
   {suggestionsOpen && matchingSuggestions.length > 0 && (
     <div
       style={{
