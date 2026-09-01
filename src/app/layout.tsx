@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Seattle Neighborhoods According to Seattleites",
-  description: "Click a block and add your neighborhood to the city.",
+  title: "Seattle Neighborhoods, According to Seattleites",
+  description: "A crowdsourced map of Seattle's neighborhoods.",
 };
 
 export const viewport: Viewport = {

@@ -208,6 +208,7 @@ export default function Home() {
 const [isNarrowScreen, setIsNarrowScreen] = useState(false);
 const [suggestionsOpen, setSuggestionsOpen] = useState(false);
 const [faqOpen, setFaqOpen] = useState(false);
+const [nameError, setNameError] = useState<string | null>(null);
 
   const neighborhoodColors = useMemo(
     () => computeNeighborhoodColors(neighborhoods, blockAdjacency),
@@ -441,9 +442,10 @@ if (counts && Object.keys(counts).length > 0) {
 
   // --- Reset the naming form whenever a new block is selected ---
   useEffect(() => {
-    setNameInput("");
-    setFormVisible(true);
-  }, [selectedGeoid]);
+  setNameInput("");
+  setFormVisible(true);
+  setNameError(null);
+}, [selectedGeoid]);
 
   // --- Load + aggregate submissions from Supabase ---
   async function loadNeighborhoods() {
@@ -662,41 +664,49 @@ if (isNarrowScreen && sidebarOpen) {
 
   // --- Save a neighborhood name for the selected block ---
   async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedGeoid || nameInput.trim() === "" || !sessionId) return;
+  e.preventDefault();
+  if (!selectedGeoid || nameInput.trim() === "" || !sessionId) return;
 
-    const name = normalizeName(nameInput);
-
-    const { error } = await supabase
-      .from("submissions")
-      .upsert(
-        { geoid: selectedGeoid, neighborhood_name: name, session_id: sessionId },
-        { onConflict: "session_id" }
-      );
-
-    if (error) {
-      console.error("Failed to save submission:", error);
-      return;
-    }
-
-    setNameInput("");
-    setFormVisible(false);
-    await loadNeighborhoods();
+  const hasSeparator = nameInput.includes("/") || nameInput.includes(",") || nameInput.includes(" or ");
+  if (hasSeparator && nameError === null) {
+    setNameError('Only choose one name you most identify with. Save again if you\'re sure about your submission.');
+    return;
   }
+
+  const name = normalizeName(nameInput);
+
+  const { error } = await supabase
+    .from("submissions")
+    .upsert(
+      { geoid: selectedGeoid, neighborhood_name: name, session_id: sessionId },
+      { onConflict: "session_id" }
+    );
+
+  if (error) {
+    console.error("Failed to save submission:", error);
+    return;
+  }
+
+  setNameInput("");
+  setFormVisible(false);
+  setNameError(null);
+  await loadNeighborhoods();
+}
 
   // --- Cancel out of the naming form (Escape key or × button) ---
   function handleCancelForm() {
-    if (selectedBlockIdRef.current !== null && mapRef.current) {
-      mapRef.current.setFeatureState(
-        { source: "seattle-blocks", id: selectedBlockIdRef.current },
-        { selected: false }
-      );
-    }
-    selectedBlockIdRef.current = null;
-    setSelectedGeoid(null);
-    setFormVisible(false);
-    setNameInput("");
+  if (selectedBlockIdRef.current !== null && mapRef.current) {
+    mapRef.current.setFeatureState(
+      { source: "seattle-blocks", id: selectedBlockIdRef.current },
+      { selected: false }
+    );
   }
+  selectedBlockIdRef.current = null;
+  setSelectedGeoid(null);
+  setFormVisible(false);
+  setNameInput("");
+  setNameError(null);
+}
 
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
@@ -811,7 +821,11 @@ if (isNarrowScreen && sidebarOpen) {
           <input
             type="text"
             value={addressInput}
-            onChange={(e) => setAddressInput(e.target.value)}
+            onChange={(e) => {
+    setNameInput(e.target.value);
+    setNameError(null);
+    setSuggestionsOpen(true);
+  }}
             placeholder="e.g. 400 Broad St"
             style={{
               fontFamily: "Radio Canada, sans-serif",
@@ -1027,7 +1041,11 @@ if (isNarrowScreen && sidebarOpen) {
     </div>
   )}
 </div>
-
+            {nameError && (
+  <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#c78c25ff" }}>
+    {nameError}
+  </div>
+)}
             {ownSubmission && ownSubmission.geoid !== selectedGeoid && (
               <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#f87171" }}>
                 You've submitted "{capitalizeWords(ownSubmission.name)}" for a different block already. Saving will move your submission to this block.
