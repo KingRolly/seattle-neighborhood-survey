@@ -660,7 +660,7 @@ export default function Home() {
 
     const hasSeparator = nameInput.includes("/") || nameInput.includes(",");
     if (hasSeparator && nameError === null) {
-      setNameError("Choose one name that you most identify with. If you're sure about this answer, save again.");
+      setNameError("Please choose ONE name that you most identify with. If you're sure about this answer, save again.");
       return;
     }
 
@@ -1054,13 +1054,13 @@ export default function Home() {
             </div>
 
             {nameError && (
-              <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#c78c25ff" }}>
+              <div style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#cb2020ff" }}>
                 {nameError}
               </div>
             )}
 
             {ownSubmission && ownSubmission.geoid !== selectedGeoid && (
-              <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#f87171" }}>
+              <div style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#cb2020ff" }}>
                 You've submitted "{capitalizeWords(ownSubmission.name)}" for a different block already. Saving will move your submission to this block.
               </div>
             )}
