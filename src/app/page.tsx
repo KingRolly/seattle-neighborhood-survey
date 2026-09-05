@@ -188,6 +188,7 @@ export default function Home() {
   const neighborhoodsRef = useRef<Record<string, Record<string, number>>>({});
   const neighborhoodColorsRef = useRef<Record<string, string>>({});
   const selectedBlockIdRef = useRef<string | null>(null);
+  const selectedGeoidRef = useRef<string | null>(null);
   const blocksGeoJsonRef = useRef<any>(null);
 
   // --- State ---
@@ -196,6 +197,8 @@ export default function Home() {
   const [selectedGeoid, setSelectedGeoid] = useState<string | null>(null);
   const [nameInput, setNameInput] = useState("");
   const [formVisible, setFormVisible] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [neighborhoods, setNeighborhoods] = useState<Record<string, Record<string, number>>>({});
   const [hasLoaded, setHasLoaded] = useState(false);
   const [blockAdjacency, setBlockAdjacency] = useState<Record<string, string[]>>({});
@@ -205,10 +208,8 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-const [isNarrowScreen, setIsNarrowScreen] = useState(false);
-const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-const [faqOpen, setFaqOpen] = useState(false);
-const [nameError, setNameError] = useState<string | null>(null);
+  const [isNarrowScreen, setIsNarrowScreen] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
 
   const neighborhoodColors = useMemo(
     () => computeNeighborhoodColors(neighborhoods, blockAdjacency),
@@ -216,43 +217,43 @@ const [nameError, setNameError] = useState<string | null>(null);
   );
 
   const qualifyingNames = useMemo(() => {
-  const nameCounts: Record<string, number> = {};
-  let total = 0;
+    const nameCounts: Record<string, number> = {};
+    let total = 0;
 
-  for (const counts of Object.values(neighborhoods)) {
-    for (const [name, count] of Object.entries(counts)) {
-      nameCounts[name] = (nameCounts[name] ?? 0) + count;
-      total += count;
+    for (const counts of Object.values(neighborhoods)) {
+      for (const [name, count] of Object.entries(counts)) {
+        nameCounts[name] = (nameCounts[name] ?? 0) + count;
+        total += count;
+      }
     }
-  }
 
-  if (total === 0) return [];
+    if (total === 0) return [];
 
-  return Object.entries(nameCounts)
-    .filter(([, count]) => count >= 5 && count / total >= 0.01)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name]) => name);
-}, [neighborhoods]);
+    return Object.entries(nameCounts)
+      .filter(([, count]) => count >= 5 && count / total >= 0.01)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name]) => name);
+  }, [neighborhoods]);
 
-const matchingSuggestions = useMemo(() => {
-  const typed = nameInput.trim().toLowerCase();
-  if (typed.length === 0) return [];
-  const limit = isNarrowScreen ? 3 : 10;
-  return qualifyingNames
-    .filter((name) => name.toLowerCase().includes(typed))
-    .sort((a, b) => a.localeCompare(b))
-    .slice(0, limit);
-}, [qualifyingNames, nameInput, isNarrowScreen]);
+  const matchingSuggestions = useMemo(() => {
+    const typed = nameInput.trim().toLowerCase();
+    if (typed.length === 0) return [];
+    const limit = isNarrowScreen ? 3 : 10;
+    return qualifyingNames
+      .filter((name) => name.toLowerCase().includes(typed))
+      .sort((a, b) => a.localeCompare(b))
+      .slice(0, limit);
+  }, [qualifyingNames, nameInput, isNarrowScreen]);
 
-  // --- Session ID (one submission per device) ---
+  // --- Device ID (one submission per device, persisted via localStorage) ---
   useEffect(() => {
-  let id = localStorage.getItem("session-id");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("session-id", id);
-  }
-  setSessionId(id);
-}, []);
+    let id = localStorage.getItem("session-id");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("session-id", id);
+    }
+    setSessionId(id);
+  }, []);
 
   // --- Map setup ---
   useEffect(() => {
@@ -292,40 +293,35 @@ const matchingSuggestions = useMemo(() => {
           filter: [">", ["get", "POPULATION"], 0],
           paint: {
             "fill-color": ["coalesce", ["feature-state", "color"], "#576373"],
-            "fill-opacity": [
-              "case",
-              ["!=", ["feature-state", "color"], null],
-              0.6,
-              0,
-            ],
+            "fill-opacity": ["case", ["!=", ["feature-state", "color"], null], 0.6, 0],
           },
         });
 
         map.addLayer({
-  id: "seattle-block-outlines",
-  type: "line",
-  source: "seattle-blocks",
-  filter: [">", ["get", "POPULATION"], 0],
-  paint: {
-    "line-color": "#333",
-    "line-width": [
-      "case",
-      ["boolean", ["feature-state", "selected"], false],
-      2,
-      ["boolean", ["feature-state", "hover"], false],
-      2,
-      0.1,
-    ],
-    "line-opacity": [
-      "case",
-      ["boolean", ["feature-state", "selected"], false],
-      1,
-      ["boolean", ["feature-state", "hover"], false],
-      1,
-      0,
-    ],
-  },
-});
+          id: "seattle-block-outlines",
+          type: "line",
+          source: "seattle-blocks",
+          filter: [">", ["get", "POPULATION"], 0],
+          paint: {
+            "line-color": "#333",
+            "line-width": [
+              "case",
+              ["boolean", ["feature-state", "selected"], false],
+              2,
+              ["boolean", ["feature-state", "hover"], false],
+              2,
+              0.1,
+            ],
+            "line-opacity": [
+              "case",
+              ["boolean", ["feature-state", "selected"], false],
+              1,
+              ["boolean", ["feature-state", "hover"], false],
+              1,
+              0,
+            ],
+          },
+        });
 
         map.addSource("seattle-city-limits", {
           type: "geojson",
@@ -378,34 +374,15 @@ const matchingSuggestions = useMemo(() => {
           hoveredBlockId = e.features[0].id;
           map.setFeatureState({ source: "seattle-blocks", id: hoveredBlockId }, { hover: true });
 
-          const counts = neighborhoodsRef.current[hoveredBlockId!];
-let html = `<div class="block-popup-title" style="font-family: Crete Round, serif;">Where is this?</div>`;
-if (counts && Object.keys(counts).length > 0) {
-  const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
-  html += Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, count]) => {
-      const pct = Math.round((count / total) * 100);
-      const color = neighborhoodColorsRef.current[name] ?? "#576373";
-      return `<div class="block-popup-row" style="font-family: Crete Round, sans-serif;">
-  <span class="block-popup-swatch" style="background:${color}"></span>
-  <span style="color:${color}">${escapeHtml(capitalizeWords(name))}: ${count} (${pct}%)</span>
-</div>`;
-    })
-    .join("");
-  html += `<div class="block-popup-row" style="font-family: Crete Round, serif; color: #888; margin-top: 4px;">${total} response${total === 1 ? "" : "s"}</div>`;
-} else {
-  html += `<div class="block-popup-row" style="font-family: Crete Round, serif;">No submissions yet</div>`;
-}
+          if (selectedGeoidRef.current) return;
 
+          const html = buildPopupHtml(hoveredBlockId!);
           popupRef.current.setLngLat(e.lngLat).setHTML(html).addTo(map);
 
           const popupEl = popupRef.current.getElement();
           popupEl.style.pointerEvents = "none";
           const contentEl = popupEl.querySelector(".maplibregl-popup-content");
-          if (contentEl) {
-            (contentEl as HTMLElement).style.pointerEvents = "none";
-          }
+          if (contentEl) (contentEl as HTMLElement).style.pointerEvents = "none";
         });
 
         map.on("mouseleave", "seattle-block-fills", () => {
@@ -414,12 +391,22 @@ if (counts && Object.keys(counts).length > 0) {
             map.setFeatureState({ source: "seattle-blocks", id: hoveredBlockId }, { hover: false });
           }
           hoveredBlockId = null;
-          popupRef.current?.remove();
+          if (!selectedGeoidRef.current) {
+            popupRef.current?.remove();
+          }
         });
 
         map.on("click", "seattle-block-fills", (e: any) => {
           if (!e.features || e.features.length === 0) return;
-          selectBlock(e.features[0].properties.GEOID_20);
+          selectBlock(e.features[0].properties.GEOID_20, [e.lngLat.lng, e.lngLat.lat]);
+        });
+
+        // Clicking empty map space deselects/closes everything
+        map.on("click", (e: any) => {
+          const features = map.queryRenderedFeatures(e.point, { layers: ["seattle-block-fills"] });
+          if (features.length === 0) {
+            handleCancelForm();
+          }
         });
 
         mapRef.current = map;
@@ -440,12 +427,12 @@ if (counts && Object.keys(counts).length > 0) {
     };
   }, []);
 
-  // --- Reset the naming form whenever a new block is selected ---
+  // --- Reset the naming form whenever the selected block changes (form starts hidden; the popup's link reveals it) ---
   useEffect(() => {
-  setNameInput("");
-  setFormVisible(true);
-  setNameError(null);
-}, [selectedGeoid]);
+    setNameInput("");
+    setFormVisible(false);
+    setNameError(null);
+  }, [selectedGeoid]);
 
   // --- Load + aggregate submissions from Supabase ---
   async function loadNeighborhoods() {
@@ -461,7 +448,6 @@ if (counts && Object.keys(counts).length > 0) {
     const aggregated: Record<string, Record<string, number>> = {};
     for (const row of data) {
       const name = normalizeName(row.neighborhood_name);
-
       if (!aggregated[row.geoid]) aggregated[row.geoid] = {};
       aggregated[row.geoid][name] = (aggregated[row.geoid][name] ?? 0) + 1;
     }
@@ -509,16 +495,13 @@ if (counts && Object.keys(counts).length > 0) {
 
     for (const [geoid, counts] of Object.entries(neighborhoods)) {
       const blended = blendColors(counts, neighborhoodColors);
-      mapRef.current.setFeatureState(
-        { source: "seattle-blocks", id: geoid },
-        { color: blended }
-      );
+      mapRef.current.setFeatureState({ source: "seattle-blocks", id: geoid }, { color: blended });
     }
 
     prevColoredGeoidsRef.current = currentGeoids;
   }, [neighborhoods, blockAdjacency, mapReady, neighborhoodColors]);
 
-  // --- Check whether this session already has a submission elsewhere ---
+  // --- Check whether this device already has a submission elsewhere ---
   useEffect(() => {
     if (!sessionId) return;
 
@@ -543,16 +526,21 @@ if (counts && Object.keys(counts).length > 0) {
     neighborhoodsRef.current = neighborhoods;
   }, [neighborhoods]);
 
-  // --- Escape key closes the naming form ---
+  // --- Keep a ref mirror of selectedGeoid (for use inside map event closures) ---
+  useEffect(() => {
+    selectedGeoidRef.current = selectedGeoid;
+  }, [selectedGeoid]);
+
+  // --- Escape key closes the popup/form and deselects ---
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && selectedGeoid && formVisible) {
+      if (e.key === "Escape" && selectedGeoid) {
         handleCancelForm();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedGeoid, formVisible]);
+  }, [selectedGeoid]);
 
   // --- Sidebar banner image rotation ---
   useEffect(() => {
@@ -562,26 +550,52 @@ if (counts && Object.keys(counts).length > 0) {
     return () => clearInterval(interval);
   }, []);
 
+  // --- Narrow-screen detection (mobile sidebar behavior) ---
   useEffect(() => {
-  const mq = window.matchMedia("(max-width: 700px)");
-  setIsNarrowScreen(mq.matches);
-  function handleChange(e: MediaQueryListEvent) {
-    setIsNarrowScreen(e.matches);
-  }
-  mq.addEventListener("change", handleChange);
-  return () => mq.removeEventListener("change", handleChange);
-}, []);
+    const mq = window.matchMedia("(max-width: 700px)");
+    setIsNarrowScreen(mq.matches);
+    function handleChange(e: MediaQueryListEvent) {
+      setIsNarrowScreen(e.matches);
+    }
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, []);
 
-function toggleSidebar() {
-  setSidebarOpen((prev) => !prev);
-  setTimeout(() => {
-    mapRef.current?.resize();
-  }, 300);
-}
+  function toggleSidebar() {
+    setSidebarOpen((prev) => !prev);
+    setTimeout(() => {
+      mapRef.current?.resize();
+    }, 300);
+  }
+
+  // --- Popup HTML builder (shared by hover and selected/frozen popups) ---
+  function buildPopupHtml(geoid: string): string {
+    const counts = neighborhoodsRef.current[geoid];
+    let html = `<div class="block-popup-title" style="font-family: Crete Round, serif; font-size: 14px;">Where is this?</div>`;
+    if (counts && Object.keys(counts).length > 0) {
+      const total = Object.values(counts).reduce((sum, c) => sum + c, 0);
+      html += Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, count]) => {
+          const pct = Math.round((count / total) * 100);
+          const color = neighborhoodColorsRef.current[name] ?? "#576373";
+          return `<div class="block-popup-row" style="font-family: Crete Round, sans-serif; font-size: 14px;">
+  <span class="block-popup-swatch" style="background:${color}"></span>
+  <span style="color:${color}">${escapeHtml(capitalizeWords(name))}: ${count} (${pct}%)</span>
+</div>`;
+        })
+        .join("");
+      html += `<div class="block-popup-row" style="font-family: Crete Round, serif; font-size: 14px; color: #888; margin-top: 4px;">Total: ${total} response${total === 1 ? "" : "s"}</div>`;
+    } else {
+      html += `<div class="block-popup-row" style="font-family: Crete Round, serif; font-size: 14px;">No submissions yet...</div>`;
+    }
+    html += `<div class="block-popup-link" style="font-family: Crete Round, serif; font-weight: bold; font-size: 14px; color: #333; cursor: pointer; margin-top: 6px;"><span style="border-bottom: 2px solid #333; padding-bottom: 1px;"> Is this your block?</span> &gt;</div>`;
+    return html;
+  }
 
   // --- Shared block-selection logic (used by both map clicks and address search) ---
-  function selectBlock(geoid: string) {
-    if (!mapRef.current) return;
+  function selectBlock(geoid: string, lngLat: [number, number]) {
+    if (!mapRef.current || !popupRef.current) return;
 
     if (selectedBlockIdRef.current !== null) {
       mapRef.current.setFeatureState(
@@ -591,12 +605,22 @@ function toggleSidebar() {
     }
 
     selectedBlockIdRef.current = geoid;
-    mapRef.current.setFeatureState(
-      { source: "seattle-blocks", id: geoid },
-      { selected: true }
-    );
+    mapRef.current.setFeatureState({ source: "seattle-blocks", id: geoid }, { selected: true });
 
+    selectedGeoidRef.current = geoid;
     setSelectedGeoid(geoid);
+
+    const html = buildPopupHtml(geoid);
+    popupRef.current.setLngLat(lngLat).setHTML(html).addTo(mapRef.current);
+
+    const popupEl = popupRef.current.getElement();
+    popupEl.style.pointerEvents = "auto";
+    const contentEl = popupEl.querySelector(".maplibregl-popup-content");
+    if (contentEl) (contentEl as HTMLElement).style.pointerEvents = "auto";
+    const tipEl = popupEl.querySelector(".maplibregl-popup-tip");
+    if (tipEl) (tipEl as HTMLElement).style.display = "none";
+    const linkEl = popupEl.querySelector(".block-popup-link");
+    if (linkEl) (linkEl as HTMLElement).onclick = () => setFormVisible(true);
   }
 
   // --- Address search: geocode -> find containing block -> select it ---
@@ -645,15 +669,14 @@ function toggleSidebar() {
         return;
       }
 
-      selectBlock(match.properties.GEOID_20);
+      selectBlock(match.properties.GEOID_20, [lng, lat]);
 
-if (isNarrowScreen && sidebarOpen) {
-  setSidebarOpen(false);
-  setTimeout(() => {
-    mapRef.current?.resize();
-  }, 300);
-}
-      
+      if (isNarrowScreen && sidebarOpen) {
+        setSidebarOpen(false);
+        setTimeout(() => {
+          mapRef.current?.resize();
+        }, 300);
+      }
     } catch (err) {
       console.error("Address search failed:", err);
       setAddressError("Something went wrong searching for that address.");
@@ -664,117 +687,123 @@ if (isNarrowScreen && sidebarOpen) {
 
   // --- Save a neighborhood name for the selected block ---
   async function handleSave(e: React.FormEvent) {
-  e.preventDefault();
-  if (!selectedGeoid || nameInput.trim() === "" || !sessionId) return;
+    e.preventDefault();
+    if (!selectedGeoid || nameInput.trim() === "" || !sessionId) return;
 
-  const hasSeparator = nameInput.includes("/") || nameInput.includes(",");
-  if (hasSeparator && nameError === null) {
-    setNameError('Choose one name that you most identify with. If you\'re sure about this answer, save again.');
-    return;
+    const hasSeparator = nameInput.includes("/") || nameInput.includes(",");
+    if (hasSeparator && nameError === null) {
+      setNameError("Choose one name that you most identify with. If you're sure about this answer, save again.");
+      return;
+    }
+
+    const name = normalizeName(nameInput);
+
+    const { error } = await supabase
+      .from("submissions")
+      .upsert(
+        { geoid: selectedGeoid, neighborhood_name: name, session_id: sessionId },
+        { onConflict: "session_id" }
+      );
+
+    if (error) {
+      console.error("Failed to save submission:", error);
+      return;
+    }
+
+    if (selectedBlockIdRef.current !== null && mapRef.current) {
+      mapRef.current.setFeatureState(
+        { source: "seattle-blocks", id: selectedBlockIdRef.current },
+        { selected: false }
+      );
+    }
+    selectedBlockIdRef.current = null;
+    selectedGeoidRef.current = null;
+    popupRef.current?.remove();
+
+    setNameInput("");
+    setFormVisible(false);
+    setNameError(null);
+    setSelectedGeoid(null);
+    await loadNeighborhoods();
   }
 
-  const name = normalizeName(nameInput);
-
-  const { error } = await supabase
-    .from("submissions")
-    .upsert(
-      { geoid: selectedGeoid, neighborhood_name: name, session_id: sessionId },
-      { onConflict: "session_id" }
-    );
-
-  if (error) {
-    console.error("Failed to save submission:", error);
-    return;
-  }
-
-  if (selectedBlockIdRef.current !== null && mapRef.current) {
-    mapRef.current.setFeatureState(
-      { source: "seattle-blocks", id: selectedBlockIdRef.current },
-      { selected: false }
-    );
-  }
-  selectedBlockIdRef.current = null;
-
-  setNameInput("");
-  setFormVisible(false);
-  setNameError(null);
-  setSelectedGeoid(null);
-  await loadNeighborhoods();
-}
-
-  // --- Cancel out of the naming form (Escape key or × button) ---
+  // --- Cancel out of the naming form / popup (Escape key, × button, or clicking empty map) ---
   function handleCancelForm() {
-  if (selectedBlockIdRef.current !== null && mapRef.current) {
-    mapRef.current.setFeatureState(
-      { source: "seattle-blocks", id: selectedBlockIdRef.current },
-      { selected: false }
-    );
+    if (selectedBlockIdRef.current !== null && mapRef.current) {
+      mapRef.current.setFeatureState(
+        { source: "seattle-blocks", id: selectedBlockIdRef.current },
+        { selected: false }
+      );
+    }
+    selectedBlockIdRef.current = null;
+    selectedGeoidRef.current = null;
+    popupRef.current?.remove();
+    setSelectedGeoid(null);
+    setFormVisible(false);
+    setNameInput("");
+    setNameError(null);
   }
-  selectedBlockIdRef.current = null;
-  setSelectedGeoid(null);
-  setFormVisible(false);
-  setNameInput("");
-  setNameError(null);
-}
 
   return (
     <div style={{ display: "flex", width: "100vw", height: "100vh" }}>
       <aside
-  style={{
-    width: sidebarOpen ? 320 : 0,
-    flexShrink: 0,
-    background: "#1a1a1a",
-    color: "#eee",
-    padding: sidebarOpen ? "20px" : "0px",
-    overflowY: "auto",
-    overflowX: "hidden",
-    boxSizing: "border-box",
-    transition: "width 0.3s ease, padding 0.3s ease",
-    position: "relative",
-  }}
->
-    <button
-  onClick={() => setFaqOpen(true)}
-  aria-label="Frequently asked questions"
-  style={{
-    position: "absolute",
-    top: 10,
-    right: 10,
-    zIndex: 30,
-    width: 28,
-    height: 28,
-    background: "white",
-    color: "#333",
-    border: "1px solid #ccc",
-    borderRadius: 0,
-    cursor: "pointer",
-    fontSize: 14,
-    fontFamily: "Crete Round, serif",
-  }}
->
-  ?
-</button>
-    <button
-  onClick={toggleSidebar}
-  aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-  style={{
-  position: "fixed",
-  top: "50%",
-  left: sidebarOpen ? 320 : 8,
-  transform: "translateY(-50%)",
-  zIndex: 10,
-  width: 28,
-  height: 48,
-  background: "#1a1a1a",
-  color: "#eee",
-  border: "none",
-  cursor: "pointer",
-  fontSize: 14,
-  transition: "left 0.3s ease",
-}}
->
-  {sidebarOpen ? "‹" : "›"}
-</button>
+        style={{
+          width: sidebarOpen ? 320 : 0,
+          flexShrink: 0,
+          background: "#1a1a1a",
+          color: "#eee",
+          padding: sidebarOpen ? "20px" : "0px",
+          overflowY: "auto",
+          overflowX: "hidden",
+          boxSizing: "border-box",
+          transition: "width 0.3s ease, padding 0.3s ease",
+          position: "relative",
+        }}
+      >
+        <button
+          onClick={() => setFaqOpen(true)}
+          aria-label="Frequently asked questions"
+          style={{
+            position: "absolute",
+            top: 10,
+            right: 10,
+            zIndex: 30,
+            width: 28,
+            height: 28,
+            background: "white",
+            color: "#333",
+            border: "1px solid #ccc",
+            borderRadius: 0,
+            cursor: "pointer",
+            fontSize: 14,
+            fontFamily: "Crete Round, serif",
+          }}
+        >
+          ?
+        </button>
+
+        <button
+          onClick={toggleSidebar}
+          aria-label={sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          style={{
+            position: "fixed",
+            top: "50%",
+            left: sidebarOpen ? 320 : 8,
+            transform: "translateY(-50%)",
+            zIndex: 10,
+            width: 28,
+            height: 48,
+            background: "#1a1a1a",
+            color: "#eee",
+            border: "none",
+            cursor: "pointer",
+            fontSize: 14,
+            transition: "left 0.3s ease",
+          }}
+        >
+          {sidebarOpen ? "‹" : "›"}
+        </button>
+
         <link href="https://fonts.googleapis.com/css2?family=Righteous&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Crete Round&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Radio Canada&display=swap" rel="stylesheet" />
@@ -828,20 +857,20 @@ if (isNarrowScreen && sidebarOpen) {
             Find a block by address:
           </label>
           <input
-  type="text"
-  value={addressInput}
-  onChange={(e) => setAddressInput(e.target.value)}
-  placeholder="e.g. 400 Broad St"
-  style={{
-    fontFamily: "Radio Canada, sans-serif",
-    padding: "6px 8px",
-    fontSize: 14,
-    border: "1px solid #444",
-    borderRadius: 0,
-    background: "#111",
-    color: "#eee",
-  }}
-/>
+            type="text"
+            value={addressInput}
+            onChange={(e) => setAddressInput(e.target.value)}
+            placeholder="e.g. 400 Broad St"
+            style={{
+              fontFamily: "Radio Canada, sans-serif",
+              padding: "6px 8px",
+              fontSize: 14,
+              border: "1px solid #444",
+              borderRadius: 0,
+              background: "#111",
+              color: "#eee",
+            }}
+          />
           <button
             type="submit"
             disabled={isSearching}
@@ -857,52 +886,70 @@ if (isNarrowScreen && sidebarOpen) {
           </div>
         )}
       </aside>
-{faqOpen && (
-  <div
-    onClick={() => setFaqOpen(false)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      background: "rgba(0,0,0,0.5)",
-      zIndex: 40,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        background: "white",
-        padding: 24,
-        maxWidth: 480,
-        width: "90%",
-        maxHeight: "80vh",
-        overflowY: "auto",
-        boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h2 style={{ fontFamily: "Righteous, sans-serif", fontSize: 20, margin: 0, color: "#1a1a1a" }}>
-          FAQ
-        </h2>
-        <button
-          onClick={() => setFaqOpen(false)}
-          aria-label="Close"
-          style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666" }}
-        >
-          ×
-        </button>
-      </div>
 
-      <div style={{ fontFamily: "Crete Round, serif", fontSize: 14, color: "#333", lineHeight: 1.6 }}>
-        <p><strong>Why are some blocks not clickable or oddly-shaped?</strong><br />Blocks with no population are not available to be clicked. Weird shapes are a result of how blocks are defined in the 2020 US Census data.</p>
-        <p><strong>Can I change my answer?</strong><br />Yes, but only while you keep the tab open. After closing, your answer is locked in.</p>
-        <p><strong>Is my submission anonymous?</strong><br/>Yes. The only information your submission is associated with is your entire block and a randomly generated ID to prevent multiple responses from one browser.</p>
-      </div>
-    </div>
-  </div>
-)}
+      {faqOpen && (
+        <div
+          onClick={() => setFaqOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 40,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white",
+              padding: 24,
+              maxWidth: 480,
+              width: "90%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <h2 style={{ fontFamily: "Righteous, sans-serif", fontSize: 20, margin: 0, color: "#1a1a1a" }}>
+                FAQ
+              </h2>
+              <button
+                onClick={() => setFaqOpen(false)}
+                aria-label="Close"
+                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#666" }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ fontFamily: "Crete Round, serif", fontSize: 14, color: "#333", lineHeight: 1.6 }}>
+              <p>
+                <strong>How do I use this site?</strong>
+                <br />
+                Scroll around and view blocks to see everyone's submissions, or click on your own block
+              </p>
+              <p>
+                <strong>Why are some blocks not clickable or oddly-shaped?</strong>
+                <br />
+                Blocks with no population are not available to be clicked. Weird shapes are a result of how blocks are defined in the 2020 US Census data.
+              </p>
+              <p>
+                <strong>Can I change my answer?</strong>
+                <br />
+                Yes, but only while you keep the tab open. After closing, your answer is locked in.
+              </p>
+              <p>
+                <strong>Is my submission anonymous?</strong>
+                <br />
+                Yes. The only information your submission is associated with is your entire block and a randomly generated ID to prevent multiple responses from one browser.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ position: "relative", flex: 1 }}>
         <div ref={mapContainer} style={{ width: "100%", height: "100%" }} />
@@ -926,7 +973,7 @@ if (isNarrowScreen && sidebarOpen) {
             width: 0;
             height: 0;
             border-right: 20px solid transparent;
-            border-top: 30px solid white;
+            border-top: 20px solid white;
           }
           .block-popup-title {
             font-size: 11px;
@@ -953,22 +1000,22 @@ if (isNarrowScreen && sidebarOpen) {
 
         {selectedGeoid && formVisible && (
           <form
-  onSubmit={handleSave}
-  style={{
-    position: "absolute",
-    top: isNarrowScreen ? "max(20px, env(safe-area-inset-top))" : 10,
-    left: 10,
-    background: "white",
-    padding: "12px 16px",
-    borderRadius: 0,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    minWidth: 220,
-    maxWidth: "calc(100vw - 40px)",
-  }}
->
+            onSubmit={handleSave}
+            style={{
+              position: "absolute",
+              top: isNarrowScreen ? "max(20px, env(safe-area-inset-top))" : 10,
+              left: 10,
+              background: "white",
+              padding: "12px 16px",
+              borderRadius: 0,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              minWidth: 220,
+              maxWidth: "calc(100vw - 40px)",
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <label style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#333", fontWeight: "bold" }}>
                 What do you call this neighborhood?
@@ -992,61 +1039,62 @@ if (isNarrowScreen && sidebarOpen) {
             </div>
 
             <div style={{ position: "relative" }}>
-  <input
-  type="text"
-  value={nameInput}
-  onChange={(e) => {
-    setNameInput(e.target.value);
-    setNameError(null);
-    setSuggestionsOpen(true);
-  }}
-  placeholder="e.g. Fremont"
-  list="neighborhood-suggestions"
-  style={{ fontFamily: "Radio Canada, sans-serif", padding: "6px 8px", fontSize: 16, border: "1px solid #ccc", borderRadius: 0 }}
-  autoFocus
-/>
-  {suggestionsOpen && matchingSuggestions.length > 0 && (
-    <div
-      style={{
-        position: "absolute",
-        top: "100%",
-        left: 0,
-        right: 0,
-        background: "white",
-        border: "1px solid #ccc",
-        borderTop: "none",
-        maxHeight: 160,
-        overflowY: "auto",
-        zIndex: 20,
-      }}
-    >
-      {matchingSuggestions.map((name) => (
-        <div
-          key={name}
-          onMouseDown={() => {
-            setNameInput(capitalizeWords(name));
-            setSuggestionsOpen(false);
-          }}
-          style={{
-            padding: "6px 8px",
-            fontSize: 14,
-            fontFamily: "Radio Canada, sans-serif",
-            cursor: "pointer",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
-        >
-          {capitalizeWords(name)}
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => {
+                  setNameInput(e.target.value);
+                  setNameError(null);
+                  setSuggestionsOpen(true);
+                }}
+                placeholder="e.g. Fremont"
+                style={{ fontFamily: "Radio Canada, sans-serif", padding: "6px 8px", fontSize: 16, border: "1px solid #ccc", borderRadius: 0, width: "100%", boxSizing: "border-box" }}
+                autoFocus
+              />
+              {suggestionsOpen && matchingSuggestions.length > 0 && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    background: "white",
+                    border: "1px solid #ccc",
+                    borderTop: "none",
+                    maxHeight: 160,
+                    overflowY: "auto",
+                    zIndex: 20,
+                  }}
+                >
+                  {matchingSuggestions.map((name) => (
+                    <div
+                      key={name}
+                      onMouseDown={() => {
+                        setNameInput(capitalizeWords(name));
+                        setSuggestionsOpen(false);
+                      }}
+                      style={{
+                        padding: "6px 8px",
+                        fontSize: 14,
+                        fontFamily: "Radio Canada, sans-serif",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f0f0")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "white")}
+                    >
+                      {capitalizeWords(name)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {nameError && (
-  <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#c78c25ff" }}>
-    {nameError}
-  </div>
-)}
+              <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#c78c25ff" }}>
+                {nameError}
+              </div>
+            )}
+
             {ownSubmission && ownSubmission.geoid !== selectedGeoid && (
               <div style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#f87171" }}>
                 You've submitted "{capitalizeWords(ownSubmission.name)}" for a different block already. Saving will move your submission to this block.
