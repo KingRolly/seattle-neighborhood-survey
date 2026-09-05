@@ -188,7 +188,6 @@ export default function Home() {
   const neighborhoodsRef = useRef<Record<string, Record<string, number>>>({});
   const neighborhoodColorsRef = useRef<Record<string, string>>({});
   const selectedBlockIdRef = useRef<string | null>(null);
-  const selectedGeoidRef = useRef<string | null>(null);
   const blocksGeoJsonRef = useRef<any>(null);
 
   // --- State ---
@@ -374,8 +373,6 @@ export default function Home() {
           hoveredBlockId = e.features[0].id;
           map.setFeatureState({ source: "seattle-blocks", id: hoveredBlockId }, { hover: true });
 
-          if (selectedGeoidRef.current) return;
-
           const html = buildPopupHtml(hoveredBlockId!);
           popupRef.current.setLngLat(e.lngLat).setHTML(html).addTo(map);
 
@@ -391,22 +388,12 @@ export default function Home() {
             map.setFeatureState({ source: "seattle-blocks", id: hoveredBlockId }, { hover: false });
           }
           hoveredBlockId = null;
-          if (!selectedGeoidRef.current) {
-            popupRef.current?.remove();
-          }
+          popupRef.current?.remove();
         });
 
         map.on("click", "seattle-block-fills", (e: any) => {
           if (!e.features || e.features.length === 0) return;
-          selectBlock(e.features[0].properties.GEOID_20, [e.lngLat.lng, e.lngLat.lat]);
-        });
-
-        // Clicking empty map space deselects/closes everything
-        map.on("click", (e: any) => {
-          const features = map.queryRenderedFeatures(e.point, { layers: ["seattle-block-fills"] });
-          if (features.length === 0) {
-            handleCancelForm();
-          }
+          selectBlock(e.features[0].properties.GEOID_20);
         });
 
         mapRef.current = map;
@@ -427,10 +414,10 @@ export default function Home() {
     };
   }, []);
 
-  // --- Reset the naming form whenever the selected block changes (form starts hidden; the popup's link reveals it) ---
+  // --- Reset + immediately show the naming form whenever a new block is selected ---
   useEffect(() => {
     setNameInput("");
-    setFormVisible(false);
+    setFormVisible(true);
     setNameError(null);
   }, [selectedGeoid]);
 
@@ -526,12 +513,7 @@ export default function Home() {
     neighborhoodsRef.current = neighborhoods;
   }, [neighborhoods]);
 
-  // --- Keep a ref mirror of selectedGeoid (for use inside map event closures) ---
-  useEffect(() => {
-    selectedGeoidRef.current = selectedGeoid;
-  }, [selectedGeoid]);
-
-  // --- Escape key closes the popup/form and deselects ---
+  // --- Escape key closes the naming form ---
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape" && selectedGeoid) {
@@ -568,7 +550,7 @@ export default function Home() {
     }, 300);
   }
 
-  // --- Popup HTML builder (shared by hover and selected/frozen popups) ---
+  // --- Popup HTML builder (used for hover) ---
   function buildPopupHtml(geoid: string): string {
     const counts = neighborhoodsRef.current[geoid];
     let html = `<div class="block-popup-title" style="font-family: Crete Round, serif; font-size: 14px;">Where is this?</div>`;
@@ -589,13 +571,12 @@ export default function Home() {
     } else {
       html += `<div class="block-popup-row" style="font-family: Crete Round, serif; font-size: 14px;">No submissions yet...</div>`;
     }
-    html += `<div class="block-popup-link" style="font-family: Crete Round, serif; font-weight: bold; font-size: 14px; color: #333; cursor: pointer; margin-top: 6px;"><span style="border-bottom: 2px solid #333; padding-bottom: 1px;"> Is this your block?</span> &gt;</div>`;
     return html;
   }
 
   // --- Shared block-selection logic (used by both map clicks and address search) ---
-  function selectBlock(geoid: string, lngLat: [number, number]) {
-    if (!mapRef.current || !popupRef.current) return;
+  function selectBlock(geoid: string) {
+    if (!mapRef.current) return;
 
     if (selectedBlockIdRef.current !== null) {
       mapRef.current.setFeatureState(
@@ -607,20 +588,7 @@ export default function Home() {
     selectedBlockIdRef.current = geoid;
     mapRef.current.setFeatureState({ source: "seattle-blocks", id: geoid }, { selected: true });
 
-    selectedGeoidRef.current = geoid;
     setSelectedGeoid(geoid);
-
-    const html = buildPopupHtml(geoid);
-    popupRef.current.setLngLat(lngLat).setHTML(html).addTo(mapRef.current);
-
-    const popupEl = popupRef.current.getElement();
-    popupEl.style.pointerEvents = "auto";
-    const contentEl = popupEl.querySelector(".maplibregl-popup-content");
-    if (contentEl) (contentEl as HTMLElement).style.pointerEvents = "auto";
-    const tipEl = popupEl.querySelector(".maplibregl-popup-tip");
-    if (tipEl) (tipEl as HTMLElement).style.display = "none";
-    const linkEl = popupEl.querySelector(".block-popup-link");
-    if (linkEl) (linkEl as HTMLElement).onclick = () => setFormVisible(true);
   }
 
   // --- Address search: geocode -> find containing block -> select it ---
@@ -669,7 +637,7 @@ export default function Home() {
         return;
       }
 
-      selectBlock(match.properties.GEOID_20, [lng, lat]);
+      selectBlock(match.properties.GEOID_20);
 
       if (isNarrowScreen && sidebarOpen) {
         setSidebarOpen(false);
@@ -717,8 +685,6 @@ export default function Home() {
       );
     }
     selectedBlockIdRef.current = null;
-    selectedGeoidRef.current = null;
-    popupRef.current?.remove();
 
     setNameInput("");
     setFormVisible(false);
@@ -727,7 +693,7 @@ export default function Home() {
     await loadNeighborhoods();
   }
 
-  // --- Cancel out of the naming form / popup (Escape key, × button, or clicking empty map) ---
+  // --- Cancel out of the naming form (Escape key or × button) ---
   function handleCancelForm() {
     if (selectedBlockIdRef.current !== null && mapRef.current) {
       mapRef.current.setFeatureState(
@@ -736,8 +702,6 @@ export default function Home() {
       );
     }
     selectedBlockIdRef.current = null;
-    selectedGeoidRef.current = null;
-    popupRef.current?.remove();
     setSelectedGeoid(null);
     setFormVisible(false);
     setNameInput("");
@@ -846,7 +810,7 @@ export default function Home() {
           Inspired by the <i>New York Times'</i> ‎ "An Extremely Detailed Map of New York City Neighborhoods."
         </p>
         <p style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#ccc", lineHeight: 1.5, marginBottom: 10 }}>
-          A map of Seattle neighborhoods created with your responses. Click on any block to see previous responses or submit your own neighborhood!
+          A Seattle neighborhood map drawn from your responses. Find your block and submit your neighborhood!
         </p>
         <p style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#777", lineHeight: 1.5, marginBottom: 10 }}>
           The block you enter will not be associated with your personal info, and is only used in aggregate for this project.
@@ -854,7 +818,7 @@ export default function Home() {
 
         <form onSubmit={handleAddressSearch} style={{ display: "flex", flexDirection: "column" }}>
           <label style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#ccc", marginTop: 0 }}>
-            Find a block by address:
+            Find your block:
           </label>
           <input
             type="text"
@@ -929,7 +893,7 @@ export default function Home() {
               <p>
                 <strong>How do I use this site?</strong>
                 <br />
-                Scroll around and view blocks to see everyone's submissions, or click on your own block
+                Scroll around and view blocks to see everyone's submissions, then click on your own block to submit your neighborhood.
               </p>
               <p>
                 <strong>Why are some blocks not clickable or oddly-shaped?</strong>
@@ -939,12 +903,12 @@ export default function Home() {
               <p>
                 <strong>Can I change my answer?</strong>
                 <br />
-                Yes, but only while you keep the tab open. After closing, your answer is locked in.
+                Yes, you can always come back if you change your mind on your neighborhood's name.
               </p>
               <p>
                 <strong>Is my submission anonymous?</strong>
                 <br />
-                Yes. The only information your submission is associated with is your entire block and a randomly generated ID to prevent multiple responses from one browser.
+                Yes. Your name and and any other personal info is not collected. The only information stored is your block, the name you entered, and a randomly generated ID to prevent multiple responses from one browser.
               </p>
             </div>
           </div>
@@ -1017,7 +981,7 @@ export default function Home() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <label style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#333", fontWeight: "bold" }}>
+              <label style={{ fontFamily: "Crete Round, serif", fontSize: 14, color: "#333", fontWeight: "bold" }}>
                 What do you call this neighborhood?
               </label>
               <button
