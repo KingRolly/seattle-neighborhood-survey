@@ -846,7 +846,7 @@ export default function Home() {
           Inspired by the <i>New York Times'</i> ‎ "An Extremely Detailed Map of New York City Neighborhoods."
         </p>
         <p style={{ fontFamily: "Crete Round, serif", fontSize: 16, color: "#ccc", lineHeight: 1.5, marginBottom: 10 }}>
-          Click on any block to see previous responses or submit your own neighborhood!
+          A map of Seattle neighborhoods created with your responses. Click on any block to see previous responses or submit your own neighborhood!
         </p>
         <p style={{ fontFamily: "Crete Round, serif", fontSize: 12, color: "#777", lineHeight: 1.5, marginBottom: 10 }}>
           The block you enter will not be associated with your personal info, and is only used in aggregate for this project.
